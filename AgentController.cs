@@ -5,10 +5,10 @@ namespace Agent1;
 internal sealed class AgentController : IDisposable
 {
     private const int QuantizedStep = 8;
-    private static readonly TimeSpan InitialPause = TimeSpan.FromMinutes(8);
-    private static readonly TimeSpan RefreshPause = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan InitialPause = TimeSpan.FromMinutes(13);
+    private static readonly TimeSpan RefreshPause = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan ClickPause = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan RoiSelectionPause = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RoiSelectionPause = TimeSpan.FromSeconds(4);
 
     private readonly Action<string> _status;
     private readonly Action _hideStatusWindow;
@@ -71,7 +71,7 @@ internal sealed class AgentController : IDisposable
             await ClickSavedPointAsync(2, token).ConfigureAwait(true);
             await ClickSavedPointAsync(3, token).ConfigureAwait(true);
 
-            for (var i = 1; i <= 25; i++)
+            for (var i = 1; i <= 11; i++)
             {
                 token.ThrowIfCancellationRequested();
                 _status($"Цикл проверки {i}/25: снимок ROI и сравнение цветов.");
