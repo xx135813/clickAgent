@@ -6,15 +6,13 @@ namespace Agent1;
 
 public partial class MainWindow : Window
 {
-    private readonly IntPtr _targetWindow;
     private AgentController? _controller;
     private Exception? _initializationException;
     private int _closeRequested;
 
-    public MainWindow(IntPtr targetWindow)
+    public MainWindow()
     {
         InitializeComponent();
-        _targetWindow = targetWindow;
 
         Left = SystemParameters.WorkArea.Right - Width - 24;
         Top = SystemParameters.WorkArea.Top + 24;
@@ -52,7 +50,7 @@ public partial class MainWindow : Window
                 throw _initializationException;
             }
 
-            _controller = new AgentController(_targetWindow, SetStatus, HideStatusWindow);
+            _controller = new AgentController(SetStatus, HideStatusWindow);
             await _controller.RunAsync();
         }
         catch (OperationCanceledException)

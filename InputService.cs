@@ -18,11 +18,12 @@ internal sealed class InputService
     public void Click(ScreenPoint point)
     {
         var (normalizedX, normalizedY) = NormalizeToVirtualDesktop(point);
+        var (buttonDown, buttonUp) = PrimaryMouseButtonFlags();
         var inputs = new[]
         {
             NativeMethods.INPUT.MouseMove(normalizedX, normalizedY),
-            NativeMethods.INPUT.MouseButton(NativeMethods.MOUSEEVENTF_LEFTDOWN),
-            NativeMethods.INPUT.MouseButton(NativeMethods.MOUSEEVENTF_LEFTUP)
+            NativeMethods.INPUT.MouseButton(buttonDown),
+            NativeMethods.INPUT.MouseButton(buttonUp)
         };
 
         Send(inputs);
@@ -38,6 +39,13 @@ internal sealed class InputService
         var x = (int)Math.Round((point.X - left) * 65535.0 / Math.Max(1, width - 1));
         var y = (int)Math.Round((point.Y - top) * 65535.0 / Math.Max(1, height - 1));
         return (x, y);
+    }
+
+    private static (uint Down, uint Up) PrimaryMouseButtonFlags()
+    {
+        return NativeMethods.GetSystemMetrics(NativeMethods.SM_SWAPBUTTON) != 0
+            ? (NativeMethods.MOUSEEVENTF_RIGHTDOWN, NativeMethods.MOUSEEVENTF_RIGHTUP)
+            : (NativeMethods.MOUSEEVENTF_LEFTDOWN, NativeMethods.MOUSEEVENTF_LEFTUP);
     }
 
     private static void Send(NativeMethods.INPUT[] inputs)

@@ -10,7 +10,7 @@ internal sealed class GlobalHookService : IDisposable
     private IntPtr _keyboardHook;
     private bool _disposed;
 
-    public event Action<ScreenPoint>? LeftMouseDown;
+    public event Action<ScreenPoint>? PrimaryMouseDown;
     public event Action? EscapePressed;
 
     public void Start()
@@ -37,12 +37,12 @@ internal sealed class GlobalHookService : IDisposable
 
     private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam == NativeMethods.WM_LBUTTONDOWN)
+        if (nCode >= 0 && IsPrimaryMouseDownMessage(wParam))
         {
             try
             {
                 var data = Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
-                LeftMouseDown?.Invoke(new ScreenPoint(data.pt.x, data.pt.y));
+                PrimaryMouseDown?.Invoke(new ScreenPoint(data.pt.x, data.pt.y));
             }
             catch
             {
@@ -72,6 +72,17 @@ internal sealed class GlobalHookService : IDisposable
         }
 
         return NativeMethods.CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+    }
+
+    private static bool IsPrimaryMouseDownMessage(IntPtr message)
+    {
+        if (message == NativeMethods.WM_LBUTTONDOWN)
+        {
+            return true;
+        }
+
+        return NativeMethods.GetSystemMetrics(NativeMethods.SM_SWAPBUTTON) != 0
+            && message == NativeMethods.WM_RBUTTONDOWN;
     }
 
     public void Dispose()

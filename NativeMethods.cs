@@ -7,6 +7,7 @@ internal static class NativeMethods
     public const int WH_MOUSE_LL = 14;
     public const int WH_KEYBOARD_LL = 13;
     public static readonly IntPtr WM_LBUTTONDOWN = new(0x0201);
+    public static readonly IntPtr WM_RBUTTONDOWN = new(0x0204);
     public static readonly IntPtr WM_KEYDOWN = new(0x0100);
     public static readonly IntPtr WM_SYSKEYDOWN = new(0x0104);
     public const uint VK_ESCAPE = 0x1B;
@@ -14,11 +15,13 @@ internal static class NativeMethods
     public const int GWL_EXSTYLE = -20;
     public const int WS_EX_TRANSPARENT = 0x00000020;
     public const int WS_EX_NOACTIVATE = 0x08000000;
+    public const uint GA_ROOT = 2;
 
     public const int SM_XVIRTUALSCREEN = 76;
     public const int SM_YVIRTUALSCREEN = 77;
     public const int SM_CXVIRTUALSCREEN = 78;
     public const int SM_CYVIRTUALSCREEN = 79;
+    public const int SM_SWAPBUTTON = 23;
 
     public const uint SRCCOPY = 0x00CC0020;
     public const uint DIB_RGB_COLORS = 0;
@@ -30,17 +33,22 @@ internal static class NativeMethods
     public const uint MOUSEEVENTF_MOVE = 0x0001;
     public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+    public const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+    public const uint MOUSEEVENTF_RIGHTUP = 0x0010;
     public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
     public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
 
     public delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT Point);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);

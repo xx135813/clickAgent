@@ -5,12 +5,11 @@ namespace Agent1;
 internal sealed class AgentController : IDisposable
 {
     private const int QuantizedStep = 8;
-    private static readonly TimeSpan InitialPause = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan InitialPause = TimeSpan.FromMinutes(8);
     private static readonly TimeSpan RefreshPause = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ClickPause = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan RoiSelectionPause = TimeSpan.FromSeconds(2);
 
-    private readonly IntPtr _targetWindow;
     private readonly Action<string> _status;
     private readonly Action _hideStatusWindow;
     private readonly GlobalHookService _hooks;
@@ -18,13 +17,13 @@ internal sealed class AgentController : IDisposable
     private readonly InputService _input = new();
     private readonly List<ScreenPoint> _clicks = new(capacity: 4);
     private readonly CancellationTokenSource _escCancellation = new();
+    private IntPtr _targetWindow;
     private ScreenRectangle _roi;
     private bool _disposed;
     private int _stopRequested;
 
-    public AgentController(IntPtr targetWindow, Action<string> status, Action hideStatusWindow)
+    public AgentController(Action<string> status, Action hideStatusWindow)
     {
-        _targetWindow = targetWindow;
         _status = status;
         _hideStatusWindow = hideStatusWindow;
         _hooks = new GlobalHookService();
@@ -33,11 +32,6 @@ internal sealed class AgentController : IDisposable
 
     public async Task RunAsync()
     {
-        if (_targetWindow == IntPtr.Zero)
-        {
-            throw new InvalidOperationException("target_window не определён: GetForegroundWindow вернул пустой handle.");
-        }
-
         var token = _escCancellation.Token;
 
         _hooks.Start();
@@ -46,6 +40,11 @@ internal sealed class AgentController : IDisposable
         for (var i = 1; i <= 4; i++)
         {
             var point = await WaitForClickAsync(i, token).ConfigureAwait(true);
+            if (i == 1)
+            {
+                _status($"target_window сохранён по клик1: X={point.X}, Y={point.Y}.");
+            }
+
             _clicks.Add(point);
             _status($"Клик{i} сохранён: X={point.X}, Y={point.Y}.");
         }
@@ -98,14 +97,26 @@ internal sealed class AgentController : IDisposable
         var tcs = new TaskCompletionSource<ScreenPoint>(TaskCreationOptions.RunContinuationsAsynchronously);
         void Handler(ScreenPoint point)
         {
-            _hooks.LeftMouseDown -= Handler;
-            tcs.TrySetResult(point);
+            _hooks.PrimaryMouseDown -= Handler;
+            try
+            {
+                if (clickNumber == 1)
+                {
+                    _targetWindow = ResolveTargetWindowFromClick(point);
+                }
+
+                tcs.TrySetResult(point);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
         }
 
-        _hooks.LeftMouseDown += Handler;
+        _hooks.PrimaryMouseDown += Handler;
         using var registration = token.Register(() =>
         {
-            _hooks.LeftMouseDown -= Handler;
+            _hooks.PrimaryMouseDown -= Handler;
             tcs.TrySetCanceled(token);
         });
 
@@ -162,8 +173,30 @@ internal sealed class AgentController : IDisposable
         }
     }
 
+    private static IntPtr ResolveTargetWindowFromClick(ScreenPoint point)
+    {
+        var clickedWindow = NativeMethods.WindowFromPoint(new NativeMethods.POINT
+        {
+            x = point.X,
+            y = point.Y
+        });
+
+        if (clickedWindow == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("target_window не определён: WindowFromPoint вернул пустой handle для клик1.");
+        }
+
+        var rootWindow = NativeMethods.GetAncestor(clickedWindow, NativeMethods.GA_ROOT);
+        return rootWindow == IntPtr.Zero ? clickedWindow : rootWindow;
+    }
+
     private void FocusTargetWindow()
     {
+        if (_targetWindow == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("target_window не определён: клик1 не сохранил окно под координатами.");
+        }
+
         if (!NativeMethods.SetForegroundWindow(_targetWindow))
         {
             throw new InvalidOperationException("SetForegroundWindow не смог вернуть фокус target_window.");
@@ -193,15 +226,21 @@ internal sealed class AgentController : IDisposable
         {
         }
 
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        var application = Application.Current;
+        if (application is null)
+        {
+            return;
+        }
+
+        var dispatcher = application.Dispatcher;
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             return;
         }
 
         try
         {
-            dispatcher.BeginInvoke(new Action(() => Application.Current.Shutdown()));
+            dispatcher.BeginInvoke(new Action(application.Shutdown));
         }
         catch
         {

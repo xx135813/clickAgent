@@ -60,7 +60,7 @@ public partial class RoiOverlayWindow : Window
 
     private void Overlay_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left)
+        if (!IsPrimaryMouseButton(e.ChangedButton))
         {
             return;
         }
@@ -84,7 +84,7 @@ public partial class RoiOverlayWindow : Window
 
     private void Overlay_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (!_isDragging || e.ChangedButton != MouseButton.Left)
+        if (!_isDragging || !IsPrimaryMouseButton(e.ChangedButton))
         {
             return;
         }
@@ -133,5 +133,16 @@ public partial class RoiOverlayWindow : Window
         Canvas.SetTop(SelectionBorder, y);
         SelectionBorder.Width = width;
         SelectionBorder.Height = height;
+    }
+
+    private static bool IsPrimaryMouseButton(MouseButton button)
+    {
+        if (button == MouseButton.Left)
+        {
+            return true;
+        }
+
+        return NativeMethods.GetSystemMetrics(NativeMethods.SM_SWAPBUTTON) != 0
+            && button == MouseButton.Right;
     }
 }

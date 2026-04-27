@@ -6,10 +6,9 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
-        var targetWindow = NativeMethods.GetForegroundWindow();
         base.OnStartup(e);
 
-        var window = new MainWindow(targetWindow);
+        var window = new MainWindow();
         MainWindow = window;
         window.Show();
     }
